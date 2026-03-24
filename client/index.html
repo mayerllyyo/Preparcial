@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Services Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #2c3e50; }
+        h2 { color: #34495e; margin-top: 30px; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 180px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        button:hover { background: #2980b9; }
+        .result {
+            margin-top: 12px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            font-family: monospace;
+            min-height: 32px;
+            word-break: break-all;
+        }
+        .error { color: #e74c3c; }
+        .proxy-url {
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .proxy-url label { font-weight: bold; }
+        .proxy-url input { width: 300px; }
+    </style>
+</head>
+<body>
+
+<h1>Math Services Client</h1>
+<p>Async client for the Active-Passive Math Microservices Proxy.</p>
+
+<div class="proxy-url">
+    <label for="proxyBase">Proxy Base URL:</label>
+    <input type="text" id="proxyBase" value="http://localhost:8090" placeholder="http://proxy-host:8090">
+</div>
+
+<!-- SIN -->
+<div class="card">
+    <h2>sin(x)</h2>
+    <label for="sinInput">Value (radians):</label>
+    <input type="number" id="sinInput" value="0" step="0.1">
+    <button onclick="callMath('sin', 'sinInput', 'sinResult')">Compute</button>
+    <div class="result" id="sinResult"></div>
+</div>
+
+<!-- COS -->
+<div class="card">
+    <h2>cos(x)</h2>
+    <label for="cosInput">Value (radians):</label>
+    <input type="number" id="cosInput" value="0" step="0.1">
+    <button onclick="callMath('cos', 'cosInput', 'cosResult')">Compute</button>
+    <div class="result" id="cosResult"></div>
+</div>
+
+<!-- SQRT -->
+<div class="card">
+    <h2>√x (square root)</h2>
+    <label for="sqrtInput">Value:</label>
+    <input type="number" id="sqrtInput" value="4" min="0">
+    <button onclick="callMath('sqrt', 'sqrtInput', 'sqrtResult')">Compute</button>
+    <div class="result" id="sqrtResult"></div>
+</div>
+
+<!-- FACTORIAL -->
+<div class="card">
+    <h2>x! (factorial)</h2>
+    <label for="factInput">Value (0–20):</label>
+    <input type="number" id="factInput" value="5" min="0" max="20" step="1">
+    <button onclick="callMath('factorial', 'factInput', 'factResult')">Compute</button>
+    <div class="result" id="factResult"></div>
+</div>
+
+<!-- IS PRIME -->
+<div class="card">
+    <h2>isPrime(x)</h2>
+    <label for="primeInput">Value:</label>
+    <input type="number" id="primeInput" value="7" min="0" step="1">
+    <button onclick="callMath('isprime', 'primeInput', 'primeResult')">Compute</button>
+    <div class="result" id="primeResult"></div>
+</div>
+
+<!-- STATUS -->
+<div class="card">
+    <h2>Proxy Status</h2>
+    <button onclick="checkStatus()">Check Status</button>
+    <div class="result" id="statusResult"></div>
+</div>
+
+<script>
+    function getProxyBase() {
+        var base = document.getElementById("proxyBase").value.trim();
+        return base.replace(/\/$/, "");
+    }
+
+    function callMath(fn, inputId, resultId) {
+        var value = document.getElementById(inputId).value;
+        var resultDiv = document.getElementById(resultId);
+        var proxyBase = getProxyBase();
+
+        resultDiv.textContent = "Loading...";
+        resultDiv.className = "result";
+
+        var xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            if (this.status === 200) {
+                try {
+                    var data = JSON.parse(this.responseText);
+                    resultDiv.textContent =
+                        data.function + "(" + data.input + ") = " + data.result;
+                } catch (e) {
+                    resultDiv.textContent = this.responseText;
+                }
+            } else {
+                resultDiv.className = "result error";
+                resultDiv.textContent = "Error " + this.status + ": " + this.responseText;
+            }
+        };
+        xhttp.onerror = function() {
+            resultDiv.className = "result error";
+            resultDiv.textContent = "Network error: could not reach proxy at " + proxyBase;
+        };
+        xhttp.open("GET", proxyBase + "/proxy/" + fn + "?value=" + encodeURIComponent(value));
+        xhttp.send();
+    }
+
+    function checkStatus() {
+        var resultDiv = document.getElementById("statusResult");
+        var proxyBase = getProxyBase();
+
+        resultDiv.textContent = "Checking...";
+        resultDiv.className = "result";
+
+        var xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            if (this.status === 200) {
+                try {
+                    var data = JSON.parse(this.responseText);
+                    resultDiv.textContent =
+                        "Active: " + data.active + " | Passive: " + data.passive;
+                } catch (e) {
+                    resultDiv.textContent = this.responseText;
+                }
+            } else {
+                resultDiv.className = "result error";
+                resultDiv.textContent = "Error " + this.status;
+            }
+        };
+        xhttp.onerror = function() {
+            resultDiv.className = "result error";
+            resultDiv.textContent = "Network error: could not reach proxy at " + proxyBase;
+        };
+        xhttp.open("GET", proxyBase + "/proxy/status");
+        xhttp.send();
+    }
+</script>
+
+</body>
+</html>
